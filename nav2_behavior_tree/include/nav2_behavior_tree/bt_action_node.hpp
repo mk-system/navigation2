@@ -353,7 +353,7 @@ protected:
 
     auto timeout = remaining > bt_loop_duration_ ? bt_loop_duration_ : remaining;
     auto result =
-      callback_group_executor_.spin_until_future_complete(*future_goal_handle_, timeout);
+      callback_group_executor_.spin_until_future_complete(*future_goal_handle_);
     elapsed += timeout;
 
     if (result == rclcpp::FutureReturnCode::INTERRUPTED) {
