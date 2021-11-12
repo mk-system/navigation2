@@ -469,14 +469,14 @@ ObstacleLayer::updateCosts(
   int max_i,
   int max_j)
 {
-  if (!enabled_) {
-    return;
-  }
-
   // if not current due to reset, set current now after clearing
   if (!current_ && was_reset_) {
     was_reset_ = false;
     current_ = true;
+  }
+
+  if (!enabled_) {
+    return;
   }
 
   if (footprint_clearing_enabled_) {
