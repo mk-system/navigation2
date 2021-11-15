@@ -46,6 +46,7 @@
 #include "pluginlib/class_list_macros.hpp"
 #include "sensor_msgs/point_cloud2_iterator.hpp"
 #include "nav2_costmap_2d/costmap_math.hpp"
+#include "rcl_interfaces/msg/set_parameters_result.hpp"
 
 PLUGINLIB_EXPORT_CLASS(nav2_costmap_2d::ObstacleLayer, nav2_costmap_2d::Layer)
 
@@ -55,6 +56,9 @@ using nav2_costmap_2d::FREE_SPACE;
 
 using nav2_costmap_2d::ObservationBuffer;
 using nav2_costmap_2d::Observation;
+
+using std::placeholders::_1;
+using rcl_interfaces::msg::ParameterType;
 
 namespace nav2_costmap_2d
 {
@@ -655,11 +659,17 @@ ObstacleLayer::activate()
     }
   }
   resetBuffersLastUpdated();
+
+  // Add callback for dynamic parameters
+  auto node = node_.lock();
+  dyn_params_handler_ = node->add_on_set_parameters_callback(
+  std::bind(&ObstacleLayer::dynamicParametersCallback, this, _1));
 }
 
 void
 ObstacleLayer::deactivate()
 {
+  dyn_params_handler_.reset();
   for (unsigned int i = 0; i < observation_subscribers_.size(); ++i) {
     if (observation_subscribers_[i] != NULL) {
       observation_subscribers_[i]->unsubscribe();
@@ -699,6 +709,30 @@ ObstacleLayer::resetBuffersLastUpdated()
       observation_buffers_[i]->resetLastUpdated();
     }
   }
+}
+
+rcl_interfaces::msg::SetParametersResult
+ObstacleLayer::dynamicParametersCallback(std::vector<rclcpp::Parameter> parameters)
+{
+  auto result = rcl_interfaces::msg::SetParametersResult();
+
+  for (auto parameter : parameters) {
+    const auto & type = parameter.get_type();
+    const auto & name = parameter.get_name();
+
+    if (ParameterType::PARAMETER_BOOL == type) {
+      if (name_ + "." + "enabled" == name) {
+        enabled_ = parameter.as_bool();
+        RCLCPP_INFO(
+          logger_,
+          "Set %s to %s",
+          name.c_str(), enabled_ ? "True" : "False");
+      }
+    }
+  }
+
+  result.successful = true;
+  return result;
 }
 
 }  // namespace nav2_costmap_2d
